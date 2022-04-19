@@ -40,10 +40,10 @@ function reset()
 
     ball.center = (WIDTH / 2, HEIGHT / 3)  #should be centre
     global ball_vel = (rand(-200:200), 400)
-	
-	#[the_duke]: DEBUG override
-	#ball.center = (100, 0)
-	#global ball_vel = (200, 400)
+    
+    #[the_duke]: DEBUG override
+    #ball.center = (100, 0)
+    #global ball_vel = (200, 400)
 end
 
 reset()
@@ -65,39 +65,39 @@ function update(g::Game)
     # is to run the update step several times per frame with tiny time steps.
     # This makes it more likely that collisions will be handled correctly.
     for _ in 1:3
-		update_step(1 / 180)
+        update_step(1 / 180)
     end
-	
-	#--slowed down version for debug--
-	# global speed = (speed + 1) % 2
-	# if speed == 1
+    
+    #--slowed down version for debug--
+    # global speed = (speed + 1) % 2
+    # if speed == 1
         # update_step(1 / 180)
     # end
-	#-------------------------
-	
+    #-------------------------
+    
     update_bat_vx()
 end
 
 function update_step(dt)
-	#get ball properties
+    #get ball properties
     x, y = ball.center  #should be centre
     global ball_vel
     vx, vy = ball_vel
-	
-	#check game over
+    
+    #check game over
     if ball.top > HEIGHT
         reset()
         return
     end
-	
-	#perform step
+    
+    #perform step
     x += vx * dt
     y += vy * dt
     ball.center = (x, y)  #should be centre
-	
-	# ==check velocity changes==
-	
-	#side border collisions
+    
+    # ==check velocity changes==
+    
+    #side border collisions
     if ball.left < 0
         vx = -vx
         ball.left = -ball.left
@@ -106,42 +106,42 @@ function update_step(dt)
         ball.right += -(2 * (ball.right - WIDTH))
     end
 
-	#top border collision
+    #top border collision
     if ball.top < 0
         vy = -vy
         ball.top = ball.top * -1
     end
-	
+    
     if collide(ball, bat)
         vy = -abs(vy)
-		vx += 170 * bat_vx
-		
-		#Excessive speed protection
-		if(abs(vx) > 200)
-			vx = sign(vx) * 200
-		end
+        vx += 170 * bat_vx
+        
+        #Excessive speed protection
+        if(abs(vx) > 200)
+            vx = sign(vx) * 200
+        end
     else
         collisions = [collide(ball, b.brick) for b in bricks]
         idx = findfirst(x->x == true, collisions)
-		
+        
         if idx ≠ nothing
             b = bricks[idx]
-			
-			#[the_duke]: note, rect's centerx gives the middle between topright x and (0,0), which is not really the rect center. bottomleft is also not aligned with the other rect corners, and does not give the absolute coordinates, but rather the coordinates relative to topleft. These seem to be bugs in gamezero.
-			#println("topleft"* string(b.brick.topleft) *", topright:"* string(b.brick.topright) *", bottomleft:"* string(b.brick.bottomleft) *", boottomright:"* string(b.brick.bottomright) *", width: "* string(BRICK_W) *", height: "* string(BRICK_H) *", centerx:"* string(b.brick.centerx))
-			# println("if abs("* string(ball.centerx) *" - ("* string(b.brick.topleft[1]) *" + "* string(b.brick.centerx) *")) < "* string(BRICK_W/2))
-			# println("if abs("* string(ball.centerx) *" - "* string(b.brick.topleft[1] + b.brick.centerx) *") < "* string(BRICK_W/2))
-			# println("if abs("* string(ball.centerx - (b.brick.topleft[1] + b.brick.centerx)) *") < "* string(BRICK_W/2))
-			if ball.centerx >= b.brick.topleft[1] && ball.centerx <= b.brick.topright[1]
-				vy = -vy
-			else
-				vx = -vx
-			end
-			
+            
+            #[the_duke]: note, rect's centerx gives the middle between topright x and (0,0), which is not really the rect center. bottomleft is also not aligned with the other rect corners, and does not give the absolute coordinates, but rather the coordinates relative to topleft. These seem to be bugs in gamezero.
+            #println("topleft"* string(b.brick.topleft) *", topright:"* string(b.brick.topright) *", bottomleft:"* string(b.brick.bottomleft) *", boottomright:"* string(b.brick.bottomright) *", width: "* string(BRICK_W) *", height: "* string(BRICK_H) *", centerx:"* string(b.brick.centerx))
+            # println("if abs("* string(ball.centerx) *" - ("* string(b.brick.topleft[1]) *" + "* string(b.brick.centerx) *")) < "* string(BRICK_W/2))
+            # println("if abs("* string(ball.centerx) *" - "* string(b.brick.topleft[1] + b.brick.centerx) *") < "* string(BRICK_W/2))
+            # println("if abs("* string(ball.centerx - (b.brick.topleft[1] + b.brick.centerx)) *") < "* string(BRICK_W/2))
+            if ball.centerx >= b.brick.topleft[1] && ball.centerx <= b.brick.topright[1]
+                vy = -vy
+            else
+                vx = -vx
+            end
+            
             deleteat!(bricks, idx)
         end
     end
-	#println("vx after "* string(vx))
+    #println("vx after "* string(vx))
     ball_vel = (vx, vy)
 end
 
@@ -153,16 +153,16 @@ function update_bat_vx()
     global bat_prev_centerx
     dx = bat.centerx - bat_prev_centerx
     bat_prev_centerx = bat.centerx
-	
-	global bat_recent_vxs
     
-	if length(bat_recent_vxs) >= 5
+    global bat_recent_vxs
+    
+    if length(bat_recent_vxs) >= 5
         popfirst!(bat_recent_vxs)
     end
     push!(bat_recent_vxs, dx)
     vx = sum(bat_recent_vxs) / length(bat_recent_vxs)
-	
-	#Limiting the bat fraction power on the ball
+    
+    #Limiting the bat fraction power on the ball
     global bat_vx = min(10, max(-10, vx))
 end
 
