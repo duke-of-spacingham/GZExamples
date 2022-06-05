@@ -1,7 +1,16 @@
 # Breakout
 
 ## About
-Translated from the [pgzero examples version](https://github.com/lordmauve/pgzero/blob/master/examples/basic/breakout.py). It demonstrates circles, rects, movement, and more advanced collisions.
+Originally translated from the [pgzero examples version](https://github.com/lordmauve/pgzero/blob/master/examples/basic/breakout.py) to demonstrate circles, rects, movement, and more advanced collisions.
+
+Later further modified to improve game experience and include extra features.
+
+Planned features:
+- [x] Victory screen (Suggested by the_duke).
+- [x] Floating bar by using up arrow button, fixed bar by using down arrow button (Suggested by the_duke).
+- [ ] Limited lives and game over secreen (Suggested by the_duke).
+- [ ] Background music and sound effects (Suggested by the_duke).
+- [ ] Ball multiplication (Suggested by Operait).
 
 ## Screenshot
 ![](breakout_screenshot.png)
