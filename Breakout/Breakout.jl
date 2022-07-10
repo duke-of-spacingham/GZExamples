@@ -224,6 +224,10 @@ function on_key_down(g::Game, key)
             bat_vert_mode = vert_immediate
         elseif key == GameZero.Keys.DOWN
             bat_vert_mode = vert_off
+        elseif key == GameZero.Keys.W
+            global bat = Rect(bat.left, bat.top, bat.w + 5, 12)
+        elseif key == GameZero.Keys.Q
+            global bat = Rect(bat.left, bat.top, bat.w - 5, 12)
         end
     elseif game_mode == game_mode_win
         reset()

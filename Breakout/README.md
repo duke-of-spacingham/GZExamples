@@ -11,6 +11,8 @@ Planned features:
 - [ ] Limited lives and game over secreen (Suggested by the_duke).
 - [ ] Background music and sound effects (Suggested by the_duke).
 - [ ] Ball multiplication (Suggested by Operait).
+- [x] Bar width control (Suggested by the_duke).
+- [ ] Timer (Suggested by the_duke).
 
 ## Screenshot
 ![](breakout_screenshot.png)
