@@ -3,18 +3,38 @@ using Colors
 WIDTH = 600
 HEIGHT = 600
 BACKGROUND = colorant"black"
-BALL_SIZE = 10
+#BALL_SIZE = 10
 MARGIN = 50
+
+#[oferw]: Number of bricks on the screen
 BRICKS_X = 10
 BRICKS_Y = 5
+
+#[oferw]: Single brick sizes
 BRICK_W = (WIDTH - 2 * MARGIN) ÷ BRICKS_X
 BRICK_H = 25
 
-ball = Circle(WIDTH / 2, HEIGHT / 2, BALL_SIZE/2)
-ball_vel = (0,0)
+mutable struct Ball
+    circ::Circle
+    velocity::Tuple{Float32, Float32}
+end
+
+function make_ball()
+    BALL_SIZE = 10
+    x_loc = rand(0:WIDTH)
+    y_loc = HEIGHT / 2
+    return Ball(Circle(x_loc, y_loc, BALL_SIZE/2), (0,0))
+end
+
+ball_arr = Ball[]
+#push!(ball_arr, Ball(Circle(WIDTH / 2, HEIGHT / 2, BALL_SIZE/2), (0,0)))
+push!(ball_arr, make_ball())
+
+#ball = Circle(WIDTH / 2, HEIGHT / 2, BALL_SIZE/2)
+#ball_vel = (0,0)
 bat = Rect(WIDTH / 2, HEIGHT - 50, 120, 12)
 
-#[the_duke]: The Actor constructor looks for the "images" directory in the current run locaiton. If the game is ran using a runner julia script (to avoid manual REPL commands), then it will use the terminal's director, and not the game's directory, and so the images won't be found, this cd to the game's dir makes the images available.
+#[the_duke]: The Actor constructor looks for the "images" directory in the current run location. If the game is ran using a runner julia script (to avoid manual REPL commands), then it will use the terminal's director, and not the game's directory, and so the images won't be found, this cd to the game's dir makes the images available.
 cd(@__DIR__)
 actors_font = "2k4sregular-r1ob"
 
@@ -62,8 +82,12 @@ function reset()
         end
     end
 
-    ball.center = (WIDTH / 2, HEIGHT / 3)  #should be centre
-    global ball_vel = (rand(-200:200), 400)
+    global ball_arr
+    i = 1
+    ball_arr[i].circ.center = (WIDTH / 2, HEIGHT / 3)
+    ball_arr[i].velocity = (rand(-200:200), 400)
+    #ball = (WIDTH / 2, HEIGHT / 3)  #should be centre
+    #ball_vel = (rand(-200:200), 400)
     
     #[the_duke]: DEBUG override
     #ball.center = (100, 0)
@@ -86,7 +110,10 @@ function draw(g::Game)
             draw(Line(b.brick.topleft, b.brick.topright), b.highlight_color)
         end
         draw(bat, colorant"pink", fill = true)
-        draw(ball, colorant"white", fill = true)
+
+        for ball in ball_arr
+            draw(ball.circ, colorant"white", fill = true)
+        end
     end
 end
 
@@ -117,74 +144,77 @@ function update(g::Game)
 end
 
 function update_step(dt)
-    #get ball properties
-    x, y = ball.center  #should be centre
-    global ball_vel
-    vx, vy = ball_vel
-    
-    #check game over
-    if ball.top > HEIGHT
-        reset()
-        return
-    end
-    
-    #perform step
-    x += vx * dt
-    y += vy * dt
-    ball.center = (x, y)  #should be centre
-    
-    # ==check velocity changes==
-    
-    #side border collisions
-    if ball.left < 0
-        vx = -vx
-        ball.left = -ball.left
-    elseif ball.right > WIDTH
-        vx = -vx
-        ball.right += -(2 * (ball.right - WIDTH))
-    end
-
-    #top border collision
-    if ball.top < 0
-        vy = -vy
-        ball.top = ball.top * -1
-    end
-    
-    if collide(ball, bat)
-        vy = -abs(vy)
-        vx += 170 * bat_vx
+    global ball_arr
+    i = 1
+    for ball in ball_arr
+        #get ball properties
+        x, y = ball.circ.center  #should be centre
+        vx, vy = ball.velocity
         
-        #Excessive speed protection
-        if(abs(vx) > 200)
-            vx = sign(vx) * 200
+        #check game over
+        if ball.circ.top > HEIGHT
+            reset()
+            return
         end
-    else
-        collisions = [collide(ball, b.brick) for b in bricks]
-        idx = findfirst(x->x == true, collisions)
         
-        if idx ≠ nothing
-            b = bricks[idx]
-            
-            #[the_duke]: This bug was fixed around 2022, but there is no strong case to change back the code. Anyway Leaving this comment as a historical reference: note, rect's centerx gives the middle between topright x and (0,0), which is not really the rect center. bottomleft is also not aligned with the other rect corners, and does not give the absolute coordinates, but rather the coordinates relative to topleft. These seem to be bugs in gamezero.
-            #println("topleft"* string(b.brick.topleft) *", topright:"* string(b.brick.topright) *", bottomleft:"* string(b.brick.bottomleft) *", boottomright:"* string(b.brick.bottomright) *", width: "* string(BRICK_W) *", height: "* string(BRICK_H) *", centerx:"* string(b.brick.centerx))
-            # println("if abs("* string(ball.centerx) *" - ("* string(b.brick.topleft[1]) *" + "* string(b.brick.centerx) *")) < "* string(BRICK_W/2))
-            # println("if abs("* string(ball.centerx) *" - "* string(b.brick.topleft[1] + b.brick.centerx) *") < "* string(BRICK_W/2))
-            # println("if abs("* string(ball.centerx - (b.brick.topleft[1] + b.brick.centerx)) *") < "* string(BRICK_W/2))
-            if ball.centerx >= b.brick.topleft[1] && ball.centerx <= b.brick.topright[1]
-                vy = -vy
-            else
-                vx = -vx
-            end
-            
-            deleteat!(bricks, idx)
+        #perform step
+        x += vx * dt
+        y += vy * dt
+        ball.circ.center = (x, y)  #should be centre
+        
+        # ==check velocity changes==
+        
+        #side border collisions
+        if ball.circ.left < 0
+            vx = -vx
+            ball.circ.left = -ball.circ.left
+        elseif ball.circ.right > WIDTH
+            vx = -vx
+            ball.circ.right += -(2 * (ball.circ.right - WIDTH))
+        end
 
-            if length(bricks) == 0
-                global game_mode = game_mode_win
+        #top border collision
+        if ball.circ.top < 0
+            vy = -vy
+            ball.circ.top = ball.circ.top * -1
+        end
+        
+        if collide(ball.circ, bat)
+            vy = -abs(vy)
+            vx += 170 * bat_vx
+            
+            #Excessive speed protection
+            if(abs(vx) > 200)
+                vx = sign(vx) * 200
+            end
+        else
+            collisions = [collide(ball.circ, b.brick) for b in bricks]
+            idx = findfirst(x->x == true, collisions)
+            
+            if idx ≠ nothing
+                b = bricks[idx]
+                
+                #[the_duke]: This bug was fixed around 2022, but there is no strong case to change back the code. Anyway Leaving this comment as a historical reference: note, rect's centerx gives the middle between topright x and (0,0), which is not really the rect center. bottomleft is also not aligned with the other rect corners, and does not give the absolute coordinates, but rather the coordinates relative to topleft. These seem to be bugs in gamezero.
+                #println("topleft"* string(b.brick.topleft) *", topright:"* string(b.brick.topright) *", bottomleft:"* string(b.brick.bottomleft) *", boottomright:"* string(b.brick.bottomright) *", width: "* string(BRICK_W) *", height: "* string(BRICK_H) *", centerx:"* string(b.brick.centerx))
+                # println("if abs("* string(ball_arr[i].circ.centerx) *" - ("* string(b.brick.topleft[1]) *" + "* string(b.brick.centerx) *")) < "* string(BRICK_W/2))
+                # println("if abs("* string(ball_arr[i].circ.centerx) *" - "* string(b.brick.topleft[1] + b.brick.centerx) *") < "* string(BRICK_W/2))
+                # println("if abs("* string(ball_arr[i].circ.centerx - (b.brick.topleft[1] + b.brick.centerx)) *") < "* string(BRICK_W/2))
+                if ball.circ.centerx >= b.brick.topleft[1] && ball.circ.centerx <= b.brick.topright[1]
+                    vy = -vy
+                else
+                    vx = -vx
+                end
+                
+                deleteat!(bricks, idx)
+
+                if length(bricks) == 0
+                    global game_mode = game_mode_win
+                end
             end
         end
+        #println("vx after "* string(vx))
+        ball.velocity = (vx, vy)
     end
-    #println("vx after "* string(vx))
-    ball_vel = (vx, vy)
 end
 
 bat_recent_vxs = []
@@ -225,9 +255,14 @@ function on_key_down(g::Game, key)
         elseif key == GameZero.Keys.DOWN
             bat_vert_mode = vert_off
         elseif key == GameZero.Keys.W
-            global bat = Rect(bat.left, bat.top, bat.w + 5, 12)
+            widen_by::Int32 = 5
+            global bat = Rect(bat.left - widen_by, bat.top, bat.w + widen_by*2, 12)
         elseif key == GameZero.Keys.Q
-            global bat = Rect(bat.left, bat.top, bat.w - 5, 12)
+            unwiden_by::Int32 = 3
+            global bat = Rect(bat.left + unwiden_by, bat.top, bat.w - unwiden_by*2, 12)
+        elseif key == GameZero.Keys.Z
+            global ball_arr
+            push!(ball_arr, make_ball())
         end
     elseif game_mode == game_mode_win
         reset()

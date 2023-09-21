@@ -7,7 +7,9 @@ Example games for [GameZero.jl](https://github.com/aviks/GameZero.jl)
 
 To play the games in this repo, see if they have a "rungame.jl" file.
 If they do, simply run the game in the terminal, it will install any dependency it might have:
+```
 > julia rungame.jl
+```
 
 If there is no rungame.jl, start the Julia REPL and run commands such as these (this example uses the spaceships game):
 
