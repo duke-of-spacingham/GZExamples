@@ -17,13 +17,15 @@ BRICK_H = 25
 mutable struct Ball
     circ::Circle
     velocity::Tuple{Float32, Float32}
+    color::Colorant
+    is_main::Bool
 end
 
-function make_ball()
+function make_ball(color = colorant"white", is_main = true)
     BALL_SIZE = 10
     x_loc = rand(0:WIDTH)
     y_loc = HEIGHT / 2
-    return Ball(Circle(x_loc, y_loc, BALL_SIZE/2), (0,0))
+    return Ball(Circle(x_loc, y_loc, BALL_SIZE/2), (rand(-200:200), 400), color, is_main)
 end
 
 ball_arr = Ball[]
@@ -83,9 +85,14 @@ function reset()
     end
 
     global ball_arr
-    i = 1
-    ball_arr[i].circ.center = (WIDTH / 2, HEIGHT / 3)
-    ball_arr[i].velocity = (rand(-200:200), 400)
+    #ball_arr = first(ball_arr,1)
+    empty!(ball_arr)
+    push!(ball_arr, make_ball())
+
+    #i = 1
+    #ball_arr[i].circ.center = (WIDTH / 2, HEIGHT / 3)
+    #ball_arr[i].velocity = (rand(-200:200), 400)
+
     #ball = (WIDTH / 2, HEIGHT / 3)  #should be centre
     #ball_vel = (rand(-200:200), 400)
     
@@ -112,7 +119,7 @@ function draw(g::Game)
         draw(bat, colorant"pink", fill = true)
 
         for ball in ball_arr
-            draw(ball.circ, colorant"white", fill = true)
+            draw(ball.circ, ball.color, fill = true)
         end
     end
 end
@@ -145,15 +152,20 @@ end
 
 function update_step(dt)
     global ball_arr
-    i = 1
-    for ball in ball_arr
+
+    for (ball_i, ball) in enumerate(ball_arr)
         #get ball properties
         x, y = ball.circ.center  #should be centre
         vx, vy = ball.velocity
         
         #check game over
         if ball.circ.top > HEIGHT
-            reset()
+            if ball.is_main
+                reset()
+            else
+                deleteat!(ball_arr, ball_i)
+            end
+
             return
         end
         
@@ -262,7 +274,7 @@ function on_key_down(g::Game, key)
             global bat = Rect(bat.left + unwiden_by, bat.top, bat.w - unwiden_by*2, 12)
         elseif key == GameZero.Keys.Z
             global ball_arr
-            push!(ball_arr, make_ball())
+            push!(ball_arr, make_ball(colorant"yellow", false))
         end
     elseif game_mode == game_mode_win
         reset()
