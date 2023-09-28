@@ -14,6 +14,22 @@ BRICKS_Y = 5
 BRICK_W = (WIDTH - 2 * MARGIN) ÷ BRICKS_X
 BRICK_H = 25
 
+#[oferw]: For future use
+#struct Bat
+#    rect::Rect
+#end
+
+mutable struct Player
+    points::Int32
+    color::Colorant
+    #bat::Bat   #for future use once bat becomes a srtuct
+end
+
+function make_player(color = colorant"pink")
+    points = 0
+    return Player(points, color)
+end
+
 mutable struct Ball
     circ::Circle
     velocity::Tuple{Float32, Float32}
@@ -28,12 +44,16 @@ function make_ball(color = colorant"white", is_main = true)
     return Ball(Circle(x_loc, y_loc, BALL_SIZE/2), (rand(-200:200), 400), color, is_main)
 end
 
+function get_points_actor(player::Player)
+    return TextActor("Points: " * string(player.points), actors_font, color = Int[255,255,255,255], font_size = 15, x = 3, y = 3)
+end
+
 ball_arr = Ball[]
-#push!(ball_arr, Ball(Circle(WIDTH / 2, HEIGHT / 2, BALL_SIZE/2), (0,0)))
 push!(ball_arr, make_ball())
 
-#ball = Circle(WIDTH / 2, HEIGHT / 2, BALL_SIZE/2)
-#ball_vel = (0,0)
+players_arr = Player[]
+push!(players_arr, make_player())
+
 bat = Rect(WIDTH / 2, HEIGHT - 50, 120, 12)
 
 #[the_duke]: The Actor constructor looks for the "images" directory in the current run location. If the game is ran using a runner julia script (to avoid manual REPL commands), then it will use the terminal's director, and not the game's directory, and so the images won't be found, this cd to the game's dir makes the images available.
@@ -64,8 +84,9 @@ bricks = []
 
 struct Brick
     brick::Rect
-    brick_color
-    highlight_color
+    brick_color::Colorant
+    highlight_color::Colorant
+    points_value::Int32
 end
 
 function reset()
@@ -76,18 +97,22 @@ function reset()
             saturation = ( (y-1) / BRICKS_Y) * 0.5 + 0.5
             brick_color = HSV(hue*360, saturation, 0.8)
             highlight_color = HSV(hue*360, saturation * 0.7, 1.0)
+            #[duke]: feature suggestion: points should be upgraded to be different per color, and be shown when the brick is hit
+            points_value = 5
             brick = Brick( Rect(
                 ((x-1) * BRICK_W + MARGIN, (y-1) * BRICK_H + MARGIN),
                 (BRICK_W - 1, BRICK_H - 1)
-            ), brick_color, highlight_color )
+            ), brick_color, highlight_color, points_value)
             push!(bricks, brick)
         end
     end
 
     global ball_arr
-    #ball_arr = first(ball_arr,1)
     empty!(ball_arr)
     push!(ball_arr, make_ball())
+
+    global players_arr
+    players_arr[1].points = 0
 
     #i = 1
     #ball_arr[i].circ.center = (WIDTH / 2, HEIGHT / 3)
@@ -116,11 +141,16 @@ function draw(g::Game)
             draw(Line(b.brick.bottomleft, b.brick.topleft), b.highlight_color)
             draw(Line(b.brick.topleft, b.brick.topright), b.highlight_color)
         end
-        draw(bat, colorant"pink", fill = true)
+
+        global players_arr
+
+        draw(bat, players_arr[1].color, fill = true)
 
         for ball in ball_arr
             draw(ball.circ, ball.color, fill = true)
         end
+
+        draw(get_points_actor(players_arr[1]))
     end
 end
 
@@ -132,12 +162,14 @@ function update(g::Game)
         #println("win!")
         #win_pic.x = 10
     else
+        global ball_arr
+        global players_arr
         # When you have fast moving objects, like the ball, a good trick
         # is to run the update step several times per frame with tiny time steps.
         # This makes it more likely that collisions will be handled correctly.
         for _ in 1:3
-            update_step(1 / 180)
-        end
+            update_step(1 / 180, ball_arr, players_arr)
+        end 
         
         #--slowed down version for debug--
         # global speed = (speed + 1) % 2
@@ -150,9 +182,7 @@ function update(g::Game)
     end
 end
 
-function update_step(dt)
-    global ball_arr
-
+function update_step(dt, ball_arr, players_arr)
     for (ball_i, ball) in enumerate(ball_arr)
         #get ball properties
         x, y = ball.circ.center  #should be centre
@@ -217,6 +247,7 @@ function update_step(dt)
                     vx = -vx
                 end
                 
+                players_arr[1].points += b.points_value
                 deleteat!(bricks, idx)
 
                 if length(bricks) == 0
