@@ -48,6 +48,17 @@ function get_points_actor(player::Player)
     return TextActor("Points: " * string(player.points), actors_font, color = Int[255,255,255,255], font_size = 15, x = 3, y = 3)
 end
 
+@enum game_winlose_modes begin
+    game_mode_play = 0
+    game_mode_lose = 1
+    game_mode_win = 2
+end
+
+mutable struct game_mode
+    winlose::game_winlose_modes
+    show_score::Bool
+end
+
 ball_arr = Ball[]
 push!(ball_arr, make_ball())
 
@@ -73,12 +84,7 @@ end
 
 bat_vert_mode = vert_off
 
-@enum game_modes begin
-    game_mode_play = 0
-    game_mode_lose = 1
-    game_mode_win = 2
-end
-game_mode = game_mode_play
+curr_game_modes::game_mode = game_mode(game_mode_play, false)
 
 bricks = []
 
@@ -130,8 +136,9 @@ reset()
 
 function draw(g::Game)
     clear()
+    global curr_game_modes
 
-    if game_mode == game_mode_win
+    if curr_game_modes.winlose == game_mode_win
         draw(win_pic)
         draw(win_text)
         draw(win_text_any_key)
@@ -150,15 +157,17 @@ function draw(g::Game)
             draw(ball.circ, ball.color, fill = true)
         end
 
-        draw(get_points_actor(players_arr[1]))
+        if curr_game_modes.show_score
+            draw(get_points_actor(players_arr[1]))
+        end
     end
 end
 
 speed = 1
 function update(g::Game)
-    global game_mode
+    global curr_game_modes
 
-    if game_mode == game_mode_win
+    if curr_game_modes.winlose == game_mode_win
         #println("win!")
         #win_pic.x = 10
     else
@@ -247,11 +256,15 @@ function update_step(dt, ball_arr, players_arr)
                     vx = -vx
                 end
                 
-                players_arr[1].points += b.points_value
+                #points frozen when not shown
+                if curr_game_modes.show_score
+                    players_arr[1].points += b.points_value
+                end
+
                 deleteat!(bricks, idx)
 
                 if length(bricks) == 0
-                    global game_mode = game_mode_win
+                    global curr_game_modes.winlose = game_mode_win
                 end
             end
         end
@@ -283,13 +296,13 @@ end
 
 function on_key_down(g::Game, key)
     global bat_vert_mode
-    global game_mode
+    global curr_game_modes
 
-    if game_mode == game_mode_play
+    if curr_game_modes.winlose == game_mode_play
 
         #[the_duke]: for victory mode debugging
         #if key == GameZero.Keys.I
-        #    game_mode = game_mode_win
+        #    game_mode.winlose = game_mode_win
         #end
         
         #Flying bar cheat
@@ -303,13 +316,15 @@ function on_key_down(g::Game, key)
         elseif key == GameZero.Keys.Q
             unwiden_by::Int32 = 3
             global bat = Rect(bat.left + unwiden_by, bat.top, bat.w - unwiden_by*2, 12)
+        elseif key == GameZero.Keys.s
+            curr_game_modes.show_score = !curr_game_modes.show_score
         elseif key == GameZero.Keys.Z
             global ball_arr
             push!(ball_arr, make_ball(colorant"yellow", false))
         end
-    elseif game_mode == game_mode_win
+    elseif curr_game_modes.winlose == game_mode_win
         reset()
-        game_mode = game_mode_play
+        curr_game_modes.winlose = game_mode_play
     end
 end
 
