@@ -1,5 +1,29 @@
 using Colors
 
+#---------------From hand_server.jl-------------
+#Seems like the Gamezero framework prevents usage of include....
+#include("hand_control/hand_server.jl")
+using Sockets
+
+hand_control_socket = nothing
+function spawn_hand_control_server()
+	#t = Threads.@spawn 
+    create_hand_server()
+	#rm("data.txt")
+	#wait(t)
+end
+
+function create_hand_server()
+    #write("data.txt", "ok, started")
+	port = 50000
+	server = listen(port)
+
+    global hand_control_socket
+    hand_control_socket = accept(server)
+    println("Hand control Client connected.")
+end
+#---------------end From hand_server.jl-------------
+
 WIDTH = 600
 HEIGHT = 600
 BACKGROUND = colorant"black"
@@ -74,7 +98,7 @@ actors_font = "2k4sregular-r1ob"
 #[the_duke]: Suggestion: These should be grouped into some win actors struct.
 win_pic = Actor("hands_holding_champions_cup.png", position = Rect(100, 50, 400, 400))
 win_text = TextActor("Victory!", actors_font, color = Int[255,255,0,255], font_size = 80, x = 160, y = 430)
-win_text_any_key = TextActor("Press any key to play again.", actors_font, color = Int[255,0,255,255], font_size = 20, x = 180, y = 550)
+win_text_any_key = TextActor("Press key 'A' to play again.", actors_font, color = Int[255,0,255,255], font_size = 20, x = 180, y = 550)
 
 @enum vert_modes begin
     vert_off = 0
@@ -83,6 +107,7 @@ win_text_any_key = TextActor("Press any key to play again.", actors_font, color 
 end
 
 bat_vert_mode = vert_off
+is_hand_control = false
 
 curr_game_modes::game_mode = game_mode(game_mode_play, false)
 
@@ -164,6 +189,7 @@ function draw(g::Game)
 end
 
 speed = 1
+hand_data = nothing
 function update(g::Game)
     global curr_game_modes
 
@@ -186,6 +212,31 @@ function update(g::Game)
             # update_step(1 / 180)
         # end
         #-------------------------
+
+        global hand_control_socket
+        if !isnothing(hand_control_socket)
+            #read(hand_control_socket, String)
+            
+            global hand_data
+            #println(hand_data)
+            println() #Strangely enough, if this println() is taken off, the socket reading won't work. Stanger: print() won't make it work.
+            if isnothing(hand_data)
+                @async hand_data = readline(hand_control_socket)
+                hand_data = "waiting" #Reading request was ativated, Waiting for hand data reading
+            elseif hand_data != "waiting"
+                hand_float = parse(Float64, hand_data)
+                pixels_to_move = round(WIDTH * hand_float)
+                #println(string(bat.centerx) *" + "* string(pixels_to_move))
+
+                #The first hand appearance gives a shocking number, reducing it.
+                if pixels_to_move < WIDTH
+                    move_bat_by(pixels_to_move, 0) 
+                end
+                hand_data = nothing #Preparing to send a reading request
+            end
+                
+                #print("["* string(hand_data) *"]\n")
+        end
         
         update_bat_vx()
     end
@@ -316,21 +367,42 @@ function on_key_down(g::Game, key)
         elseif key == GameZero.Keys.Q
             unwiden_by::Int32 = 3
             global bat = Rect(bat.left + unwiden_by, bat.top, bat.w - unwiden_by*2, 12)
-        elseif key == GameZero.Keys.s
+        elseif key == GameZero.Keys.S
             curr_game_modes.show_score = !curr_game_modes.show_score
-        elseif key == GameZero.Keys.Z
+        elseif key == GameZero.Keys.H
+            global is_hand_control
+            if !is_hand_control
+                println("EASTER EGG: Hand control activated.")
+                curr_path = pwd()
+                #Running the hand client first since it takes time before failing
+                run(`cmd /k py $curr_path/hand_control/hand_control.py`, wait=false)
+                create_hand_server()
+                is_hand_control = true
+            end
+        elseif key == GameZero.Keys.B
             global ball_arr
             push!(ball_arr, make_ball(colorant"yellow", false))
         end
-    elseif curr_game_modes.winlose == game_mode_win
+    elseif curr_game_modes.winlose == game_mode_win && key == GameZero.Keys.A
         reset()
         curr_game_modes.winlose = game_mode_play
     end
 end
 
 function on_mouse_move(g::Game, pos)
-    global bat_vert_mode
     x, y = pos
+    bat.centerx = x
+
+    move_bat_to(x, y)
+end
+
+function move_bat_by(x, y)
+    move_bat_to(bat.centerx + x, bat.centery + y)
+end
+
+function move_bat_to(x, y)
+    global bat_vert_mode
+
     bat.centerx = x
 
     if bat_vert_mode == vert_immediate
